@@ -1,0 +1,3 @@
+class NixLogicalExpression {
+  const NixLogicalExpression();
+}
