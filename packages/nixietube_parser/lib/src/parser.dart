@@ -129,7 +129,7 @@ class NixParser extends GrammarDefinition {
       (pattern('^\\"\n\r') | char('\\') & pattern('\n\r'))
           .labeled('stringContentDoubleQuotedLexicalToken');
 
-  Parser letterLexicalToken() => letter();
+  Parser letterLexicalToken() => letter() | char('_');
 
   Parser identifierLexicalToken() => (ref0(identifierStartLexicalToken) &
           ref0(identifierPartLexicalToken)
@@ -147,6 +147,7 @@ class NixParser extends GrammarDefinition {
   Parser identifierPartLexicalToken() =>
       (ref0(identifierExpressionLexicalToken) |
               ref0(letterLexicalToken) |
+              char('-') |
               string("'") |
               ref0(number))
           .labeled('identifierPartLexicalToken');
