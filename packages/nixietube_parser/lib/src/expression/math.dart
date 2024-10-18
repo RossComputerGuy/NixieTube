@@ -63,6 +63,8 @@ class NixMathExpression extends NixType<Object?> {
 
     var i = left is NixType ? (left as NixType).constEval(scope) : left;
 
+    final shouldPromote = left is double;
+
     for (final item in right) {
       i = switch (item.operation) {
         NixMathOperator.add => i + item.constEval(scope),
@@ -75,6 +77,7 @@ class NixMathExpression extends NixType<Object?> {
       };
     }
 
+    if (!shouldPromote) return i.toInt();
     return i;
   }
 
