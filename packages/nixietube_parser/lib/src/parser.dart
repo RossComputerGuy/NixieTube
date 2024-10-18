@@ -72,18 +72,50 @@ class NixParser extends GrammarDefinition {
   Parser<List<dynamic>> stringLexicalToken() =>
       (ref0(multiLineStringLexicalToken) | ref0(singleLineStringLexicalToken))
           .labeled('stringLexicalToken')
-          .map((value) => [value]);
+          .map((value) => value);
 
-  // TODO: escape for inner expression
-  Parser<List<List<dynamic>>> multiLineStringLexicalToken() =>
-      (string("''") & any().starLazy(string("''")).flatten() & string("''"))
-          .map((value) => value[1]
-              .split('\n')
-              .map((v) => v.trim())
-              .where((v) => v.isNotEmpty as bool)
-              .map((v) => [v])
-              .toList()
-              .cast<List<dynamic>>());
+  Parser<List<List<dynamic>>> multiLineStringLexicalToken() => (string("''") &
+          (ref0(identifierExpressionLexicalToken) | any())
+              .starLazy(string("''")) &
+          string("''"))
+      .map((value) => value[1].fold(<List<dynamic>>[], (prev, item) {
+            var value = prev;
+            if (item is String) {
+              final i = item.indexOf('\n');
+              if (i > 0) {
+                if (value.length == 0) {
+                  value.add(<Object?>[item.substring(0, i)]);
+                } else if (value.length > 0) {
+                  final last = value[value.length - 1];
+                  if (last[last.length - 1] is String) {
+                    last[last.length - 1] += item.substring(0, i);
+                  } else {
+                    last.add(<Object?>[item.substring(0, i)]);
+                  }
+                }
+
+                value.add([item.substring(i + 1)]);
+              } else {
+                if (value.length == 0) {
+                  value.add(<Object?>[item]);
+                } else {
+                  final last = value[value.length - 1];
+                  if (last[last.length - 1] is String) {
+                    last[last.length - 1] += item;
+                  } else {
+                    last.add(item);
+                  }
+                }
+              }
+            } else {
+              if (value.length == 0) {
+                value.add([item]);
+              } else {
+                value[value.length - 1].add(item);
+              }
+            }
+            return value;
+          }));
 
   // TODO: escape for inner expression
   Parser<List<dynamic>> singleLineStringLexicalToken() => (char('"') &

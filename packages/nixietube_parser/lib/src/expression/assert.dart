@@ -6,6 +6,9 @@ class NixAssertExpression extends NixType<NixAssertExpression> {
   final Object? value;
 
   @override
+  int get hashCode => Object.hashAll([value]);
+
+  @override
   bool get isConstant => isObjectConstantNix(value);
 
   @override

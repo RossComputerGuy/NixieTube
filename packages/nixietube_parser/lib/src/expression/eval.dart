@@ -7,6 +7,9 @@ class NixEvalExpression {
   final List<Object?> inners;
 
   @override
+  int get hashCode => Object.hashAll([identifiers, inners]);
+
+  @override
   bool operator ==(Object other) {
     if (other is NixEvalExpression) {
       if (other.inners.length == inners.length) {

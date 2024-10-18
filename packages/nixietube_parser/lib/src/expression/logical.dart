@@ -10,6 +10,10 @@ class NixLogicalExpression extends NixType<Object?> {
   final Object? value;
 
   @override
+  int get hashCode =>
+      Object.hashAll([runtimeType.toString(), isNegative, value]);
+
+  @override
   bool get isConstant => isObjectConstantNix(value);
 
   @override
@@ -25,6 +29,14 @@ class NixLogicalExpression extends NixType<Object?> {
     }
 
     return ceval;
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is NixLogicalExpression) {
+      return other.value == value && other.isNegative == isNegative;
+    }
+    return false;
   }
 
   @override

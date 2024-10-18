@@ -12,6 +12,13 @@ class NixAttributeSetExpression {
   final Map<Object, Object?> fields;
 
   @override
+  int get hashCode => Object.hashAll([
+        isRec,
+        inherits,
+        fields,
+      ]);
+
+  @override
   String toString() =>
       (isRec ? 'rec ' : '') +
       '{ ' +

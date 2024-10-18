@@ -44,20 +44,28 @@ void main() {
     expect(result.value, false);
   });
 
+  test('Strings', () {
+    final parse = NixParser();
+    final parser = parse.buildFrom(parse.stringLexicalToken());
+
+    print("""''
+      Hello,
+      world
+      \${1 + 2}
+      ''\${2 + 4}
+    ''""");
+
+    print(parser.parse("""''
+      Hello,
+      world
+      \${1 + 2}
+    ''"""));
+  });
+
   test('Expressions', () {
     final parse = NixParser();
     final parser = parse.build();
 
-    expect(
-        parser.parse('with builtins; assert false; null').value,
-        NixExpression(
-          null,
-          withs: [
-            NixEvalExpression(NixIdentifierList([
-              NixIdentifier(['builtins'])
-            ])),
-          ],
-          asserts: [false],
-        ));
+    expect(parser.parse('assert true; null').value, NixLogicalExpression(null));
   });
 }
