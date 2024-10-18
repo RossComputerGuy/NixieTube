@@ -8,12 +8,11 @@ enum NixMergeOperation {
 }
 
 class NixMergeExpression {
-  const NixMergeExpression(this.operation, this.left, this.right);
+  const NixMergeExpression(this.operation, this.values);
 
   final NixMergeOperation operation;
-  final Object? left;
-  final Object? right;
+  final List<Object?> values;
 
   @override
-  String toString() => '$left ${operation.token} $right';
+  String toString() => values.join(' ${operation.token} ');
 }

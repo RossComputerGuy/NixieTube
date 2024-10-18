@@ -1,11 +1,14 @@
 import 'package:petitparser/petitparser.dart';
 
 import 'expression/assert.dart';
+import 'expression/attrset.dart';
 import 'expression/eval.dart';
 import 'expression/math.dart';
 import 'expression/merge.dart';
 import 'expression/or.dart';
+import 'expression/inherit.dart';
 import 'expression/import.dart';
+import 'expression/logical.dart';
 import 'expression/with.dart';
 import 'expression.dart';
 
@@ -112,6 +115,7 @@ class NixParser extends GrammarDefinition {
   Parser identifierPartLexicalToken() =>
       (ref0(identifierExpressionLexicalToken) |
               ref0(letterLexicalToken) |
+              string("'") |
               ref0(number))
           .labeled('identifierPartLexicalToken');
 
@@ -170,7 +174,7 @@ class NixParser extends GrammarDefinition {
                     .toList(),
               ));
 
-  Parser parenExpression() =>
+  Parser<NixExpression> parenExpression() =>
       (ref1(token, '(') & ref0(expression) & ref1(token, ')'))
           .map((value) => value[1]);
 
@@ -183,38 +187,52 @@ class NixParser extends GrammarDefinition {
       ref0(attrSetExpression) |
       ref0(logicalExpression));
 
-  Parser logicalExpression() => ref1(token, '!').optional() & (ref0(parenExpression) |
-      ref0(mergeListExpression) |
-      ref0(mergeAttrExpression) |
-      ref0(hasAttrExpression) |
-      ref0(orExpression) |
-      ref0(mathExpression) |
-      ref0(literal) |
-      ref0(evalExpression));
+  Parser<NixLogicalExpression> logicalExpression() => (ref1(token, '!')
+              .optional() &
+          (ref0(parenExpression) |
+              ref0(mergeListExpression) |
+              ref0(mergeAttrExpression) |
+              ref0(hasAttrExpression) |
+              ref0(orExpression) |
+              ref0(mathExpression) |
+              ref0(literal) |
+              ref0(evalExpression)))
+      .map((value) => NixLogicalExpression(value[1],
+          isNegative: value[0] is Token ? value[0].value == '!' : false));
 
   Parser evalExpression() =>
       (ref0(identifierList) & ref0(innerExpression).star())
           .labeled('evalExpression')
           .map((value) => NixEvalExpression(value[0], value[1]));
 
-  Parser letInExpression() =>
-      (ref0(letToken) & ref0(field).plus() & ref0(inToken) & ref0(expression))
-          .labeled('letInExpression');
+  Parser letInExpression() => (ref0(letToken) &
+          ref0(field).starSeparated(ref1(token, ';')) &
+          ref0(inToken) &
+          ref0(expression))
+      .labeled('letInExpression');
 
   Parser field() =>
-      (ref0(inheritExpression) |
-          (ref0(identifierList) & ref1(token, '=') & ref0(expression))) &
-      ref1(token, ';');
+      ((ref0(inheritExpression) | ref0(normalField)) & ref1(token, ';'))
+          .map((value) => value[0]);
+
+  Parser<MapEntry<Object, Object?>> normalField() =>
+      ((ref0(identifierList) | ref0(stringLexicalToken)) &
+              ref1(token, '=') &
+              ref0(expression))
+          .map((value) => MapEntry(value[0], value[2]));
 
   Parser derivationExpression() => (ref0(derivationToken) &
           ref1(token, '{') &
-          ref0(field).plus() &
+          ref0(field).starSeparated(ref1(token, ';')) &
           ref1(token, '}'))
       .labeled('derivationExpression');
 
-  Parser inheritExpression() =>
-      (ref0(inheritToken) & ref0(inheritFrom).optional() & ref0(identifier))
-          .labeled('inheritExpression');
+  Parser<NixInheritExpression> inheritExpression() => (ref0(inheritToken) &
+          ref0(inheritFrom).optional() &
+          ref0(identifier).plus())
+      .labeled('inheritExpression')
+      .map((value) => NixInheritExpression(value[2].cast<NixIdentifier>(),
+          value[1] is List ? value[1][1] : null));
 
   Parser inheritFrom() =>
       ref1(token, '(') & ref0(identifierList) & ref1(token, ')');
@@ -231,9 +249,12 @@ class NixParser extends GrammarDefinition {
           ref0(expression))
       .labeled('ifElseExpression');
 
-  Parser mathExpression() =>
-      (ref0(mathExpressionSide) & ref0(mathOperator) & ref0(mathExpressionSide))
-          .labeled('mathExpression');
+  Parser mathExpression() => (ref0(mathExpressionSide) &
+          (ref0(mathOperator) & ref0(mathExpressionSide))
+              .map((value) => NixMathExpressionSide(value[0], value[1]))
+              .plus())
+      .labeled('mathExpression')
+      .map((value) => NixMathExpression(value[0], value[1]));
 
   Parser mathExpressionSide() =>
       ref0(parenExpression) |
@@ -294,59 +315,68 @@ class NixParser extends GrammarDefinition {
       .plusSeparated(ref1(token, ':'))
       .labeled('funcArguments');
 
-  Parser funcArgumentsElement() => (ref0(identifier) |
-          (ref1(token, '{') &
-              (ref0(funcArgumentsElementField) &
-                      (ref1(token, ',') &
-                              ref0(funcArgumentsElementField)
-                                  .plusSeparated(ref1(token, ',')))
-                          .optional())
-                  .optional() &
-              ref1(token, '}')))
+  Parser funcArgumentsElement() => ((ref0(identifier) |
+              (ref1(token, '{') &
+                  (ref0(funcArgumentsElementField) &
+                          (ref1(token, ',') &
+                                  ref0(funcArgumentsElementField)
+                                      .plusSeparated(ref1(token, ',')))
+                              .optional())
+                      .optional() &
+                  ref1(token, '}'))) &
+          ref1(token, ':'))
       .labeled('funcArgumentsElement');
 
   Parser funcArgumentsElementField() =>
       ref0(identifier) & (ref1(token, '?') & ref0(expression)).optional();
 
   Parser mergeListExpression() => (ref0(mergeListExpressionSide) &
-          ref1(token, '++') &
-          ref0(mergeListExpressionSide))
+          (ref1(token, '++') & ref0(mergeListExpressionSide)).plus())
       .labeled('mergeListExpression')
-      .map((value) =>
-          NixMergeExpression(NixMergeOperation.list, value[0], value[2]));
+      .map((value) => NixMergeExpression(NixMergeOperation.list,
+          [value[0], ...value[1].map((value) => value[1])]));
 
-  Parser mergeListExpressionSide() => (ref0(listExpression) |
-          ref0(literal) |
-          ref0(identifierList) |
-          ref0(parenExpression))
-      .labeled('mergeListExpressionSide');
+  Parser mergeListExpressionSide() =>
+      (ref0(listExpression) | ref0(identifierList) | ref0(parenExpression))
+          .labeled('mergeListExpressionSide');
 
-  Parser listExpression() =>
+  Parser<List<Object?>> listExpression() =>
       (ref1(token, '[') & ref0(listElement).star() & ref1(token, ']'))
-          .labeled('listExpression');
+          .labeled('listExpression')
+          .map((value) => value[1]);
 
   Parser listElement() => (ref0(listExpression) |
           ref0(attrSetExpression) |
           ref0(literal) |
-          ref0(identifierList))
+          ref0(identifierList) |
+          ref0(parenExpression))
       .labeled('listElement');
 
   Parser mergeAttrExpression() => (ref0(mergeAttrExpressionSide) &
-          ref1(token, '//') &
-          ref0(mergeAttrExpressionSide))
+          (ref1(token, '//') & ref0(mergeAttrExpressionSide)).plus())
       .labeled('mergeAttrExpression')
-      .map((value) =>
-          NixMergeExpression(NixMergeOperation.attrset, value[0], value[2]));
+      .map((value) => NixMergeExpression(NixMergeOperation.attrset,
+          [value[0], ...value[1].map((value) => value[1])]));
 
   Parser mergeAttrExpressionSide() =>
       (ref0(attrSetExpression) | ref0(identifierList) | ref0(parenExpression))
           .labeled('mergeAttrExpressionSide');
 
   Parser attrSetExpression() => (ref0(recToken).optional() &
-          ref1(token, '{') &
-          ref0(field).plus() &
-          ref1(token, '}'))
-      .labeled('attrSetExpression');
+              ref1(token, '{') &
+              ref0(field).starSeparated(ref1(token, ';')) &
+              ref1(token, '}'))
+          .labeled('attrSetExpression')
+          .map((value) {
+        final fields = value[2].elements;
+        return NixAttributeSetExpression(
+          fields: Map.fromEntries(fields
+              .whereType<MapEntry<Object, Object?>>()
+              .cast<MapEntry<Object, Object?>>()
+              .toList()),
+          inherits: fields.whereType<NixInheritExpression>().toList(),
+        );
+      });
 
   Parser attrSetListElementValueOptional() =>
       (ref1(token, '?') & ref0(expression))
