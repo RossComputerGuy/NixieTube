@@ -21,8 +21,7 @@ class NixAttributeSetExpression extends NixType<Map<Object, Object?>> {
 
   @override
   bool isConstant(Map<Object, Object?> scope) =>
-      isObjectConstantNix(inherits, scope) &&
-      isObjectConstantNix(fields, scope);
+      isObjectConstantNix(fields, scope, fields: fields, inherits: inherits);
 
   @override
   Map<Object, Object?> constEval(Map<Object, Object?> scope) => constEvalScope(

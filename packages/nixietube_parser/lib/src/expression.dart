@@ -14,21 +14,9 @@ class NixExpression extends NixType<dynamic> {
   final Object? inner;
 
   @override
-  bool isConstant(Map<Object, Object?> scope) =>
-      isObjectConstantNix(withs, scope) &&
-      isObjectConstantNix(asserts, scope) &&
-      isObjectConstantNix(inner, scope);
-
-  @override
-  dynamic constEval(Map<Object, Object?> scope) {
-    if (isObjectConstantNix(asserts, scope)) {
-      for (final a in asserts) {
-        NixAssertExpression(a).constEval(scope);
-      }
-    }
-
-    if (inner is NixType) {
-      return (inner as NixType).constEval(Map.fromEntries([
+  bool isConstant(Map<Object, Object?> scope) {
+    if (isObjectConstantNix(withs, scope)) {
+      final newScope = Map.fromEntries([
         ...scope.entries,
         ...withs
             .whereType<NixAttributeSetExpression>()
@@ -37,7 +25,36 @@ class NixExpression extends NixType<dynamic> {
             .fold(<MapEntry<Object, Object?>>[], (prev, item) {
           return prev.toList()..addAll(item);
         }),
-      ]));
+      ]);
+
+      return isObjectConstantNix(asserts, newScope) &&
+          isObjectConstantNix(inner, newScope);
+    }
+
+    return false;
+  }
+
+  @override
+  dynamic constEval(Map<Object, Object?> scope) {
+    final newScope = Map.fromEntries([
+      ...scope.entries,
+      ...withs
+          .whereType<NixAttributeSetExpression>()
+          .map((entry) => entry.constEval(scope).entries.toList())
+          .toList()
+          .fold(<MapEntry<Object, Object?>>[], (prev, item) {
+        return prev.toList()..addAll(item);
+      }),
+    ]);
+
+    if (isObjectConstantNix(asserts, newScope)) {
+      for (final a in asserts) {
+        NixAssertExpression(a).constEval(newScope);
+      }
+    }
+
+    if (inner is NixType) {
+      return (inner as NixType).constEval(newScope);
     }
     return inner;
   }

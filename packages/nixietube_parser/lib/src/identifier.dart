@@ -31,15 +31,28 @@ class NixIdentifierList extends NixType<Object?> {
   final List<Object?> value;
 
   @override
+  int get hashCode => Object.hashAll(value);
+
+  @override
   bool isConstant(Map<Object, Object?> scope) {
-    // FIXME: implement handling of identifier lists or strings
-    return true;
+    // FIXME: implement proper handling of identifier lists or strings
+
+    for (final key in scope.keys) {
+      if (key == this) return true;
+    }
+    return false;
   }
 
   @override
   Object? constEval(Map<Object, Object?> scope) {
-    // FIXME: implement handling of identifier lists or strings
-    return null;
+    // FIXME: implement proper handling of identifier lists or strings
+    for (final key in scope.keys) {
+      if (key == this) {
+        return scope[key];
+      }
+    }
+
+    throw Exception('Internal error, could not match key');
   }
 
   @override

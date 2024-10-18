@@ -58,18 +58,21 @@ Map<Object, Object?> constEvalScope({
       ]);
 
   // TODO: handle inherits
-  return Map.fromEntries(fields.entries
-      .where((entry) => isObjectConstantNix(
-            entry.value,
-            createMiniScope(entry.key),
-          ))
-      .map((entry) {
-    if (entry.value is NixType) {
-      return MapEntry(
-        entry.key,
-        (entry.value as NixType).constEval(createMiniScope(entry.key)),
-      );
-    }
-    return entry;
-  }));
+  return Map.fromEntries([
+    ...scope.entries,
+    ...fields.entries
+        .where((entry) => isObjectConstantNix(
+              entry.value,
+              createMiniScope(entry.key),
+            ))
+        .map((entry) {
+      if (entry.value is NixType) {
+        return MapEntry(
+          entry.key,
+          (entry.value as NixType).constEval(createMiniScope(entry.key)),
+        );
+      }
+      return entry;
+    }),
+  ]);
 }
