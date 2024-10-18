@@ -159,20 +159,28 @@ class NixParser extends GrammarDefinition {
   @override
   Parser start() => ref0(expression).end();
 
-  Parser<NixExpression> expression() =>
+  Parser<dynamic> expression() =>
       ((ref0(withExpression) | ref0(assertExpression)).star() &
               ref0(innerExpression))
-          .map((value) => NixExpression(
-                value[1],
-                withs: value[0]
-                    .whereType<NixWithExpression>()
-                    .map((value) => value.value)
-                    .toList(),
-                asserts: value[0]
-                    .whereType<NixAssertExpression>()
-                    .map((value) => value.value)
-                    .toList(),
-              ));
+          .map((value) {
+        final expr = NixExpression(
+          value[1],
+          withs: value[0]
+              .whereType<NixWithExpression>()
+              .map((value) => value.value)
+              .toList(),
+          asserts: value[0]
+              .whereType<NixAssertExpression>()
+              .map((value) => value.value)
+              .toList(),
+        );
+
+        if (expr.isConstant) {
+          return expr.constEval();
+        }
+
+        return expr;
+      });
 
   Parser<NixExpression> parenExpression() =>
       (ref1(token, '(') & ref0(expression) & ref1(token, ')'))
@@ -250,11 +258,15 @@ class NixParser extends GrammarDefinition {
       .labeled('ifElseExpression');
 
   Parser mathExpression() => (ref0(mathExpressionSide) &
-          (ref0(mathOperator) & ref0(mathExpressionSide))
-              .map((value) => NixMathExpressionSide(value[0], value[1]))
-              .plus())
-      .labeled('mathExpression')
-      .map((value) => NixMathExpression(value[0], value[1]));
+              (ref0(mathOperator) & ref0(mathExpressionSide))
+                  .map((value) => NixMathExpressionSide(value[0], value[1]))
+                  .plus())
+          .labeled('mathExpression')
+          .map((value) {
+        final expr = NixMathExpression(value[0], value[1]);
+        if (expr.isConstant) return expr.constEval();
+        return expr;
+      });
 
   Parser mathExpressionSide() =>
       ref0(parenExpression) |
@@ -302,7 +314,13 @@ class NixParser extends GrammarDefinition {
 
   Parser<NixAssertExpression> assertExpression() =>
       (ref0(assetToken) & ref0(innerExpression) & ref1(token, ';'))
-          .map((value) => NixAssertExpression(value[1]));
+          .map((value) {
+        final expr = NixAssertExpression(value[1]);
+        if (expr.isConstant) {
+          return expr.constEval();
+        }
+        return expr;
+      });
 
   Parser<NixWithExpression> withExpression() =>
       (ref0(withToken) & ref0(innerExpression) & ref1(token, ';'))

@@ -1,4 +1,7 @@
-class NixExpression {
+import 'expression/assert.dart';
+import 'type.dart';
+
+class NixExpression extends NixType<dynamic> {
   const NixExpression(
     this.inner, {
     this.withs = const [],
@@ -8,6 +11,22 @@ class NixExpression {
   final List<Object?> withs;
   final List<Object?> asserts;
   final Object? inner;
+
+  @override
+  bool get isConstant =>
+      isObjectConstantNix(withs) &&
+      isObjectConstantNix(asserts) &&
+      isObjectConstantNix(inner);
+
+  @override
+  dynamic constEval() {
+    if (isObjectConstantNix(asserts)) {
+      for (final a in asserts) {
+        NixAssertExpression(a).constEval();
+      }
+    }
+    return inner;
+  }
 
   @override
   bool operator ==(Object other) {
