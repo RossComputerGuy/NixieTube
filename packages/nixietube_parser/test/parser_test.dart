@@ -48,24 +48,20 @@ void main() {
     final parse = NixParser();
     final parser = parse.buildFrom(parse.stringLexicalToken());
 
-    print("""''
-      Hello,
-      world
-      \${1 + 2}
-      ''\${2 + 4}
-    ''""");
-
+    // TODO: write expect once string parsing fully works
     print(parser.parse("""''
       Hello,
       world
       \${1 + 2}
-    ''"""));
+    ''""").value);
   });
 
   test('Expressions', () {
     final parse = NixParser();
     final parser = parse.build();
 
-    expect(parser.parse('assert true; null').value, NixLogicalExpression(null));
+    expect(parser.parse('assert true; null').value, null);
+    expect(parser.parse('with { a = 1; }; a + 1').value, 2);
+    expect(parser.parse('let a = 1; in a + 1').value, 2);
   });
 }
