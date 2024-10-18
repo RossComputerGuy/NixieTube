@@ -182,7 +182,7 @@ class NixParser extends GrammarDefinition {
         return expr;
       });
 
-  Parser<NixExpression> parenExpression() =>
+  Parser parenExpression() =>
       (ref1(token, '(') & ref0(expression) & ref1(token, ')'))
           .map((value) => value[1]);
 
