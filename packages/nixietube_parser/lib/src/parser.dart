@@ -246,7 +246,7 @@ class NixParser extends GrammarDefinition {
           .map((value) => NixEvalExpression(value[0], value[1]));
 
   Parser letInExpression() => (ref0(letToken) &
-          ref0(field).starSeparated(ref1(token, ';')) &
+          ref0(field).star() &
           ref0(inToken) &
           ref0(expression))
       .labeled('letInExpression');
@@ -263,7 +263,7 @@ class NixParser extends GrammarDefinition {
 
   Parser derivationExpression() => (ref0(derivationToken) &
           ref1(token, '{') &
-          ref0(field).starSeparated(ref1(token, ';')) &
+          ref0(field).star() &
           ref1(token, '}'))
       .labeled('derivationExpression');
 
@@ -362,7 +362,7 @@ class NixParser extends GrammarDefinition {
       (ref0(funcArguments) & ref0(expression)).labeled('funcExpression');
 
   Parser funcArguments() => ref0(funcArgumentsElement)
-      .plusSeparated(ref1(token, ':'))
+      .plus()
       .labeled('funcArguments');
 
   Parser funcArgumentsElement() => ((ref0(identifier) |
@@ -394,7 +394,7 @@ class NixParser extends GrammarDefinition {
       (ref1(token, '[') & ref0(listElement).star() & ref1(token, ']'))
           .labeled('listExpression')
           .map((value) => value[1]);
-
+ 
   Parser listElement() => (ref0(listExpression) |
           ref0(attrSetExpression) |
           ref0(literal) |
@@ -414,17 +414,18 @@ class NixParser extends GrammarDefinition {
 
   Parser attrSetExpression() => (ref0(recToken).optional() &
               ref1(token, '{') &
-              ref0(field).starSeparated(ref1(token, ';')) &
+              ref0(field).star() &
               ref1(token, '}'))
           .labeled('attrSetExpression')
           .map((value) {
-        final fields = value[2].elements;
+        final fields = value[2];
         return NixAttributeSetExpression(
           fields: Map.fromEntries(fields
               .whereType<MapEntry<Object, Object?>>()
               .cast<MapEntry<Object, Object?>>()
               .toList()),
           inherits: fields.whereType<NixInheritExpression>().toList(),
+          isRec: value[0] is Token ? value[0].value == 'rec' : false,
         );
       });
 
