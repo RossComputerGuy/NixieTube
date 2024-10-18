@@ -1,6 +1,7 @@
 import 'inherit.dart';
+import '../type.dart';
 
-class NixAttributeSetExpression {
+class NixAttributeSetExpression extends NixType<Map<Object, Object?>> {
   const NixAttributeSetExpression({
     this.isRec = false,
     this.inherits = const [],
@@ -17,6 +18,19 @@ class NixAttributeSetExpression {
         inherits,
         fields,
       ]);
+
+  @override
+  bool isConstant(Map<Object, Object?> scope) =>
+      isObjectConstantNix(inherits, scope) &&
+      isObjectConstantNix(fields, scope);
+
+  @override
+  Map<Object, Object?> constEval(Map<Object, Object?> scope) => constEvalScope(
+        scope: scope,
+        fields: fields,
+        inherits: inherits,
+        isRec: isRec,
+      );
 
   @override
   String toString() =>

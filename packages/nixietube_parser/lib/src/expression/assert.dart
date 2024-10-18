@@ -9,19 +9,20 @@ class NixAssertExpression extends NixType<NixAssertExpression> {
   int get hashCode => Object.hashAll([value]);
 
   @override
-  bool get isConstant => isObjectConstantNix(value);
+  bool isConstant(Map<Object, Object?> scope) =>
+      isObjectConstantNix(value, scope);
 
   @override
-  NixAssertExpression constEval() {
+  NixAssertExpression constEval(Map<Object, Object?> scope) {
     if (value is NixType) {
-      if ((value as NixType).constEval() as bool) {
+      if ((value as NixType).constEval(scope) as bool) {
         return this;
       }
 
       throw Exception('Assertion \'$value\' failed');
     }
 
-    if (isConstant) {
+    if (isConstant(scope)) {
       if (value as bool) {
         return this;
       }

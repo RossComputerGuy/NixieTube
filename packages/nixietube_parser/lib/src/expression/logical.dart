@@ -14,15 +14,17 @@ class NixLogicalExpression extends NixType<Object?> {
       Object.hashAll([runtimeType.toString(), isNegative, value]);
 
   @override
-  bool get isConstant => isObjectConstantNix(value);
+  bool isConstant(Map<Object, Object?> scope) =>
+      isObjectConstantNix(value, scope);
 
   @override
-  Object? constEval() {
-    if (!isConstant) {
+  Object? constEval(Map<Object, Object?> scope) {
+    if (!isConstant(scope)) {
       throw Exception('Not constant');
     }
 
-    final ceval = value is NixType ? (value as NixType).constEval() : value;
+    final ceval =
+        value is NixType ? (value as NixType).constEval(scope) : value;
 
     if (isNegative) {
       return !(ceval as bool);

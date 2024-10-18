@@ -1,3 +1,5 @@
+import 'type.dart';
+
 class NixIdentifier {
   const NixIdentifier(this.value);
 
@@ -23,10 +25,22 @@ class NixIdentifier {
   String toString() => value.join('');
 }
 
-class NixIdentifierList {
+class NixIdentifierList extends NixType<Object?> {
   const NixIdentifierList(this.value);
 
   final List<Object?> value;
+
+  @override
+  bool isConstant(Map<Object, Object?> scope) {
+    // FIXME: implement handling of identifier lists or strings
+    return true;
+  }
+
+  @override
+  Object? constEval(Map<Object, Object?> scope) {
+    // FIXME: implement handling of identifier lists or strings
+    return null;
+  }
 
   @override
   bool operator ==(Object other) {

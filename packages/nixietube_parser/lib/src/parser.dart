@@ -3,6 +3,7 @@ import 'package:petitparser/petitparser.dart';
 import 'expression/assert.dart';
 import 'expression/attrset.dart';
 import 'expression/eval.dart';
+import 'expression/letin.dart';
 import 'expression/math.dart';
 import 'expression/merge.dart';
 import 'expression/or.dart';
@@ -208,8 +209,8 @@ class NixParser extends GrammarDefinition {
               .toList(),
         );
 
-        if (expr.isConstant) {
-          return expr.constEval();
+        if (expr.isConstant({})) {
+          return expr.constEval({});
         }
 
         return expr;
@@ -246,11 +247,24 @@ class NixParser extends GrammarDefinition {
           .labeled('evalExpression')
           .map((value) => NixEvalExpression(value[0], value[1]));
 
-  Parser letInExpression() => (ref0(letToken) &
-          ref0(field).star() &
-          ref0(inToken) &
-          ref0(expression))
-      .labeled('letInExpression');
+  Parser letInExpression() =>
+      (ref0(letToken) & ref0(field).star() & ref0(inToken) & ref0(expression))
+          .map((value) {
+        final fields = value[1];
+        final expr = NixLetInExpression(
+          value[3],
+          fields: Map.fromEntries(fields
+              .whereType<MapEntry<Object, Object?>>()
+              .cast<MapEntry<Object, Object?>>()
+              .toList()),
+          inherits: fields.whereType<NixInheritExpression>().toList(),
+        );
+
+        if (expr.isConstant({})) {
+          return expr.constEval({});
+        }
+        return expr;
+      });
 
   Parser field() =>
       ((ref0(inheritExpression) | ref0(normalField)) & ref1(token, ';'))
@@ -297,7 +311,7 @@ class NixParser extends GrammarDefinition {
           .labeled('mathExpression')
           .map((value) {
         final expr = NixMathExpression(value[0], value[1]);
-        if (expr.isConstant) return expr.constEval();
+        if (expr.isConstant({})) return expr.constEval({});
         return expr;
       });
 
@@ -349,8 +363,8 @@ class NixParser extends GrammarDefinition {
       (ref0(assetToken) & ref0(innerExpression) & ref1(token, ';'))
           .map((value) {
         final expr = NixAssertExpression(value[1]);
-        if (expr.isConstant) {
-          return expr.constEval();
+        if (expr.isConstant({})) {
+          return expr.constEval({});
         }
         return expr;
       });
@@ -362,9 +376,8 @@ class NixParser extends GrammarDefinition {
   Parser funcExpression() =>
       (ref0(funcArguments) & ref0(expression)).labeled('funcExpression');
 
-  Parser funcArguments() => ref0(funcArgumentsElement)
-      .plus()
-      .labeled('funcArguments');
+  Parser funcArguments() =>
+      ref0(funcArgumentsElement).plus().labeled('funcArguments');
 
   Parser funcArgumentsElement() => ((ref0(identifier) |
               (ref1(token, '{') &
@@ -395,7 +408,7 @@ class NixParser extends GrammarDefinition {
       (ref1(token, '[') & ref0(listElement).star() & ref1(token, ']'))
           .labeled('listExpression')
           .map((value) => value[1]);
- 
+
   Parser listElement() => (ref0(listExpression) |
           ref0(attrSetExpression) |
           ref0(literal) |

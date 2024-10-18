@@ -1,4 +1,5 @@
 import 'expression/assert.dart';
+import 'expression/attrset.dart';
 import 'type.dart';
 
 class NixExpression extends NixType<dynamic> {
@@ -13,17 +14,30 @@ class NixExpression extends NixType<dynamic> {
   final Object? inner;
 
   @override
-  bool get isConstant =>
-      isObjectConstantNix(withs) &&
-      isObjectConstantNix(asserts) &&
-      isObjectConstantNix(inner);
+  bool isConstant(Map<Object, Object?> scope) =>
+      isObjectConstantNix(withs, scope) &&
+      isObjectConstantNix(asserts, scope) &&
+      isObjectConstantNix(inner, scope);
 
   @override
-  dynamic constEval() {
-    if (isObjectConstantNix(asserts)) {
+  dynamic constEval(Map<Object, Object?> scope) {
+    if (isObjectConstantNix(asserts, scope)) {
       for (final a in asserts) {
-        NixAssertExpression(a).constEval();
+        NixAssertExpression(a).constEval(scope);
       }
+    }
+
+    if (inner is NixType) {
+      return (inner as NixType).constEval(Map.fromEntries([
+        ...scope.entries,
+        ...withs
+            .whereType<NixAttributeSetExpression>()
+            .map((entry) => entry.constEval(scope).entries.toList())
+            .toList()
+            .fold(<MapEntry<Object, Object?>>[], (prev, item) {
+          return prev.toList()..addAll(item);
+        }),
+      ]));
     }
     return inner;
   }

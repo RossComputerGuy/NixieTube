@@ -18,23 +18,24 @@ enum NixMathOperator {
   final String token;
 }
 
-class NixMathExpressionSide extends NixType<num> {
+class NixMathExpressionSide extends NixType<Object?> {
   const NixMathExpressionSide(this.operation, this.value);
 
   final NixMathOperator operation;
   final Object? value;
 
   @override
-  bool get isConstant => isObjectConstantNix(value);
+  bool isConstant(Map<Object, Object?> scope) =>
+      isObjectConstantNix(value, scope);
 
   @override
-  num constEval() {
+  Object? constEval(Map<Object, Object?> scope) {
     if (value is NixType) {
-      return (value as NixType).constEval as num;
+      return (value as NixType).constEval(scope);
     }
 
-    if (isConstant) {
-      return value as num;
+    if (isConstant(scope)) {
+      return value;
     }
 
     throw Exception('Not constant');
@@ -44,30 +45,31 @@ class NixMathExpressionSide extends NixType<num> {
   String toString() => '${operation.token} $value';
 }
 
-class NixMathExpression extends NixType<num> {
+class NixMathExpression extends NixType<Object?> {
   const NixMathExpression(this.left, [this.right = const []]);
 
   final Object? left;
   final List<NixMathExpressionSide> right;
 
   @override
-  bool get isConstant =>
-      isObjectConstantNix(left) && isObjectConstantNix(right);
+  bool isConstant(Map<Object, Object?> scope) =>
+      isObjectConstantNix(left, scope) && isObjectConstantNix(right, scope);
 
   @override
-  num constEval() {
-    if (!isConstant) {
+  Object? constEval(Map<Object, Object?> scope) {
+    if (!isConstant(scope)) {
       throw Exception('Not constant');
     }
 
-    var i = (left is NixType ? (left as NixType).constEval : left) as num;
+    var i = left is NixType ? (left as NixType).constEval(scope) : left;
 
     for (final item in right) {
       i = switch (item.operation) {
-        NixMathOperator.add => i + item.constEval(),
-        NixMathOperator.sub => i - item.constEval(),
-        NixMathOperator.mul => i * item.constEval(),
-        NixMathOperator.div => i / item.constEval(),
+        NixMathOperator.add => i + item.constEval(scope),
+        NixMathOperator.sub => i - item.constEval(scope),
+        NixMathOperator.mul => i * item.constEval(scope),
+        NixMathOperator.div => i / item.constEval(scope),
+        NixMathOperator.equal => (i as bool) == (item.constEval(scope) as bool),
         (_) =>
           throw Exception('Cannot handle operation: ${item.operation.name}'),
       };
