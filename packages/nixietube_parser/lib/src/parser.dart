@@ -80,7 +80,7 @@ class NixParser extends GrammarDefinition {
       (string("''").token() &
               (ref0(identifierExpressionLexicalToken) | any())
                   .token()
-                  .starLazy(string("''").token()) &
+                  .starLazy(string("''")) &
               string("''").token())
           .map((value) {
         final column = (value[0].column - value[2].column).abs();
@@ -122,7 +122,8 @@ class NixParser extends GrammarDefinition {
           (ref0(identifierExpressionLexicalToken) | pattern('^"\n\r')).star() &
               char('"'))
       .labeled('singleLineStringLexicalToken')
-      .map((value) => value[1].fold(<Object?>[], (prev, item) {
+      .map((value) => (value.length == 3 ? value[1] : value[0])
+              .fold(<Object?>[], (prev, item) {
             if (prev.isEmpty || item.runtimeType != prev.last.runtimeType) {
               prev.add(item);
             } else if (prev.last is String && item is String) {
