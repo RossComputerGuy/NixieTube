@@ -82,37 +82,31 @@ class NixParser extends GrammarDefinition {
                   .token()
                   .starLazy(string("''")) &
               string("''").token())
-          .map((value) {
-        final column = (value[0].column - value[2].column).abs();
-        final line = value[0].line;
-        return value[1].fold(<List<dynamic>>[], (prev, token) {
-          var value = prev;
+          .map((value) => value[1].fold(<List<dynamic>>[], (prev, token) {
+          var list = prev;
 
+          final line = value[0].line;
           final reline = token.line - line;
-          final recol = token.column - column;
 
-          while (value.length < reline) {
-            value.add(<Object?>[]);
+          while (list.length < reline) {
+            list.add(<Object?>[]);
           }
 
-          if (recol > 0) {
-            if (token.value is String) {
-              final newline = token.value.indexOf('\n');
-              if (newline == -1) {
-                final curr = value[reline - 1];
-                if (curr.isNotEmpty && curr[curr.length - 1] is String) {
-                  curr[curr.length - 1] += token.value;
-                } else {
-                  curr.add(token.value);
-                }
+          if (token.value is String) {
+            final newline = token.value.indexOf('\n');
+            if (newline == -1) {
+              final curr = list[reline - 1];
+              if (curr.isNotEmpty && curr[curr.length - 1] is String) {
+                curr[curr.length - 1] += token.value;
+              } else {
+                if (curr.length > 0 || token.value != ' ') curr.add(token.value);
               }
-            } else {
-              value[reline - 1].add(token.value);
             }
+          } else {
+            list[reline - 1].add(token.value);
           }
-          return value;
-        });
-      });
+          return list;
+        }));
 
   Parser<List<dynamic>> singleLineStringLexicalToken() => (char('"') &
               (ref0(identifierExpressionLexicalToken) |
