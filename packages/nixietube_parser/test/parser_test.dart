@@ -49,11 +49,39 @@ void main() {
     final parser = parse.buildFrom(parse.stringLexicalToken());
 
     // TODO: write expect once string parsing fully works
-    print(parser.parse("""''
-      Hello,
-      world
-      \${1 + 2}
-    ''""").value);
+    expect(parser.parse("""''
+    Hello,
+    world
+    \${1 + 2}
+    ''""").value, [
+      ['Hello,'],
+      ['world'],
+      [3],
+      [],
+    ]);
+
+    expect(parser.parse('"Hello, world \${1 + 2}"').value, [
+      'Hello, world ',
+      3,
+    ]);
+  });
+
+  test('Paths', () {
+    final parse = NixParser();
+    final parser = parse.buildFrom(parse.pathToken());
+
+    expect(parser.parse("../.").value, NixPath(['..', '.']));
+    expect(parser.parse("../..").value, NixPath(['..', '..']));
+  });
+
+  test('Math expressions', () {
+    final parse = NixParser();
+    final parser = parse.buildFrom(parse.mathExpression());
+
+    expect(parser.parse('1 + 1').value, 2);
+    expect(parser.parse('1 * 1').value, 1);
+    expect(parser.parse('1 / 1').value, 1);
+    expect(parser.parse('1 - 1').value, 0);
   });
 
   test('Expressions', () {

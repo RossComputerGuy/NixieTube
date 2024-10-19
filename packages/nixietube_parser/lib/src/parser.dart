@@ -75,56 +75,61 @@ class NixParser extends GrammarDefinition {
           .labeled('stringLexicalToken')
           .map((value) => value);
 
-  Parser<List<List<dynamic>>> multiLineStringLexicalToken() => (string("''") &
-          (ref0(identifierExpressionLexicalToken) | any())
-              .starLazy(string("''")) &
-          string("''"))
-      .map((value) => value[1].fold(<List<dynamic>>[], (prev, item) {
-            var value = prev;
-            if (item is String) {
-              final i = item.indexOf('\n');
-              if (i > 0) {
-                if (value.length == 0) {
-                  value.add(<Object?>[item.substring(0, i)]);
-                } else if (value.length > 0) {
-                  final last = value[value.length - 1];
-                  if (last[last.length - 1] is String) {
-                    last[last.length - 1] += item.substring(0, i);
-                  } else {
-                    last.add(<Object?>[item.substring(0, i)]);
-                  }
-                }
+  // FIXME: handle ''${expr}
+  Parser<List<List<dynamic>>> multiLineStringLexicalToken() =>
+      (string("''").token() &
+              (ref0(identifierExpressionLexicalToken) | any())
+                  .token()
+                  .starLazy(string("''").token()) &
+              string("''").token())
+          .map((value) {
+        final column = (value[0].column - value[2].column).abs();
+        final line = value[0].line;
+        return value[1].fold(<List<dynamic>>[], (prev, token) {
+          var value = prev;
 
-                value.add([item.substring(i + 1)]);
-              } else {
-                if (value.length == 0) {
-                  value.add(<Object?>[item]);
+          final reline = token.line - line;
+          final recol = token.column - column;
+
+          while (value.length < reline) {
+            value.add(<Object?>[]);
+          }
+
+          if (recol > 0) {
+            if (token.value is String) {
+              final newline = token.value.indexOf('\n');
+              if (newline == -1) {
+                final curr = value[reline - 1];
+                if (curr.isNotEmpty && curr[curr.length - 1] is String) {
+                  curr[curr.length - 1] += token.value;
                 } else {
-                  final last = value[value.length - 1];
-                  if (last[last.length - 1] is String) {
-                    last[last.length - 1] += item;
-                  } else {
-                    last.add(item);
-                  }
+                  curr.add(token.value);
                 }
               }
             } else {
-              if (value.length == 0) {
-                value.add([item]);
-              } else {
-                value[value.length - 1].add(item);
-              }
+              value[reline - 1].add(token.value);
             }
-            return value;
-          }));
+          }
+          return value;
+        });
+      });
 
-  // TODO: escape for inner expression
   Parser<List<dynamic>> singleLineStringLexicalToken() => (char('"') &
-              ref0(stringContentDoubleQuotedLexicalToken).star().flatten() &
+              (ref0(identifierExpressionLexicalToken) |
+                      ref0(stringContentDoubleQuotedLexicalToken))
+                  .star() &
               char('"') |
-          pattern('^"\n\r').star() & char('"'))
+          (ref0(identifierExpressionLexicalToken) | pattern('^"\n\r')).star() &
+              char('"'))
       .labeled('singleLineStringLexicalToken')
-      .map((value) => [value[1]]);
+      .map((value) => value[1].fold(<Object?>[], (prev, item) {
+            if (prev.isEmpty || item.runtimeType != prev.last.runtimeType) {
+              prev.add(item);
+            } else if (prev.last is String && item is String) {
+              prev.last += item;
+            }
+            return prev;
+          }));
 
   Parser stringContentDoubleQuotedLexicalToken() =>
       (pattern('^\\"\n\r') | char('\\') & pattern('\n\r'))
@@ -154,7 +159,7 @@ class NixParser extends GrammarDefinition {
           .labeled('identifierPartLexicalToken');
 
   Parser identifierExpressionLexicalToken() =>
-      (ref1(token, '\${') & ref0(expression) & ref1(token, '}'))
+      (string('\${').token() & ref0(expression) & string('}').token())
           .map((value) => value[1]);
 
   Parser<NixPath> pathToken() =>
@@ -176,6 +181,7 @@ class NixParser extends GrammarDefinition {
       ref0(pathTokenElementDown) |
       ref0(pathTokenElementCurr) |
       ref0(pathTokenElementName) |
+      (ref1(token, '..').map((value) => value.value)) |
       (ref1(token, '.').map((value) => value.value));
 
   Parser pathTokenElementDown() => string('../')
