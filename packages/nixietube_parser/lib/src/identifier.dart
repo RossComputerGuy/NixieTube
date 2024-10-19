@@ -52,7 +52,8 @@ class NixIdentifierList extends NixType<Object?> {
       }
     }
 
-    throw Exception('Internal error, could not match key');
+    throw Exception(
+        'Internal error, could not match key \'$this\' in scope \'$scope\'');
   }
 
   @override

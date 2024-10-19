@@ -1,3 +1,4 @@
+import 'function.dart';
 import '../identifier.dart';
 import '../type.dart';
 
@@ -8,23 +9,31 @@ class NixEvalExpression extends NixType<Object?> {
   final List<Object?> inners;
 
   @override
-  bool isConstant(Map<Object, Object?> scope) =>
-      isObjectConstantNix(identifiers, scope) &&
-      isObjectConstantNix(inners, scope);
+  bool isConstant(Map<Object, Object?> scope) {
+    if (inners.isNotEmpty && isObjectConstantNix(identifiers, scope)) {
+      final value = identifiers.constEval(scope);
+      if (value is NixFunctionExpression) {
+        return value.isConstant(Map.fromEntries([
+          ...scope.entries,
+          ...inners.asMap().entries,
+        ]));
+      }
+    }
+
+    return isObjectConstantNix(identifiers, scope);
+  }
 
   @override
   Object? constEval(Map<Object, Object?> scope) {
-    var value = identifiers.constEval(scope);
+    final value = identifiers.constEval(scope);
+
     if (inners.isNotEmpty) {
-      var i = 0;
-      for (final inner in inners) {
-        // TODO: map i into the arguments
-        value = (value as NixType).constEval(Map.fromEntries([
-          ...scope.entries,
-          MapEntry(i, inner),
-        ]));
-        i++;
-      }
+      final func = value as NixFunctionExpression;
+
+      return func.constEval(Map.fromEntries([
+        ...scope.entries,
+        ...inners.asMap().entries,
+      ]));
     }
     return value;
   }

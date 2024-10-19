@@ -1,8 +1,11 @@
 library;
 
 export 'src/expression/assert.dart';
+import 'src/expression/attrset.dart';
 export 'src/expression/eval.dart';
-export 'src/expression/import.dart';
+export 'src/expression/function.dart';
+export 'src/expression/inherit.dart';
+export 'src/expression/letin.dart';
 export 'src/expression/logical.dart';
 export 'src/expression/math.dart';
 export 'src/expression/merge.dart';

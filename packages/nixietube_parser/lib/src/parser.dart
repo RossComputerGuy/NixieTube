@@ -3,13 +3,13 @@ import 'package:petitparser/petitparser.dart';
 import 'expression/assert.dart';
 import 'expression/attrset.dart';
 import 'expression/eval.dart';
+import 'expression/function.dart';
+import 'expression/inherit.dart';
 import 'expression/letin.dart';
+import 'expression/logical.dart';
 import 'expression/math.dart';
 import 'expression/merge.dart';
 import 'expression/or.dart';
-import 'expression/inherit.dart';
-import 'expression/import.dart';
-import 'expression/logical.dart';
 import 'expression/with.dart';
 import 'expression.dart';
 
@@ -17,7 +17,13 @@ import 'identifier.dart';
 import 'path.dart';
 
 class NixParser extends GrammarDefinition {
-  const NixParser();
+  const NixParser({
+    this.globalScope = const {},
+    this.doEvalReduce = true,
+  });
+
+  final Map<Object, Object?> globalScope;
+  final bool doEvalReduce;
 
   Parser token(Object input) {
     if (input is Parser) {
@@ -30,8 +36,6 @@ class NixParser extends GrammarDefinition {
 
   /* Tokens */
 
-  Parser importToken() => ref1(token, 'import');
-  Parser derivationToken() => ref1(token, 'derivation');
   Parser builtinsToken() => ref1(token, 'builtins');
   Parser letToken() => ref1(token, 'let');
   Parser inToken() => ref1(token, 'in');
@@ -83,30 +87,31 @@ class NixParser extends GrammarDefinition {
                   .starLazy(string("''")) &
               string("''").token())
           .map((value) => value[1].fold(<List<dynamic>>[], (prev, token) {
-          var list = prev;
+                var list = prev;
 
-          final line = value[0].line;
-          final reline = token.line - line;
+                final line = value[0].line;
+                final reline = token.line - line;
 
-          while (list.length < reline) {
-            list.add(<Object?>[]);
-          }
+                while (list.length < reline) {
+                  list.add(<Object?>[]);
+                }
 
-          if (token.value is String) {
-            final newline = token.value.indexOf('\n');
-            if (newline == -1) {
-              final curr = list[reline - 1];
-              if (curr.isNotEmpty && curr[curr.length - 1] is String) {
-                curr[curr.length - 1] += token.value;
-              } else {
-                if (curr.length > 0 || token.value != ' ') curr.add(token.value);
-              }
-            }
-          } else {
-            list[reline - 1].add(token.value);
-          }
-          return list;
-        }));
+                if (token.value is String) {
+                  final newline = token.value.indexOf('\n');
+                  if (newline == -1) {
+                    final curr = list[reline - 1];
+                    if (curr.isNotEmpty && curr[curr.length - 1] is String) {
+                      curr[curr.length - 1] += token.value;
+                    } else {
+                      if (curr.length > 0 || token.value != ' ')
+                        curr.add(token.value);
+                    }
+                  }
+                } else {
+                  list[reline - 1].add(token.value);
+                }
+                return list;
+              }));
 
   Parser<List<dynamic>> singleLineStringLexicalToken() => (char('"') &
               (ref0(identifierExpressionLexicalToken) |
@@ -150,7 +155,7 @@ class NixParser extends GrammarDefinition {
               ref0(letterLexicalToken) |
               char('-') |
               string("'") |
-              ref0(number))
+              digit())
           .labeled('identifierPartLexicalToken');
 
   Parser identifierExpressionLexicalToken() =>
@@ -210,8 +215,8 @@ class NixParser extends GrammarDefinition {
               .toList(),
         );
 
-        if (expr.isConstant({})) {
-          return expr.constEval({});
+        if (expr.isConstant(globalScope) && doEvalReduce) {
+          return expr.constEval(globalScope);
         }
 
         return expr;
@@ -222,9 +227,7 @@ class NixParser extends GrammarDefinition {
           .map((value) => value[1]);
 
   Parser innerExpression() => (ref0(letInExpression) |
-      ref0(derivationExpression) |
       ref0(ifElseExpression) |
-      ref0(importExpression) |
       ref0(funcExpression) |
       ref0(listExpression) |
       ref0(attrSetExpression) |
@@ -246,7 +249,15 @@ class NixParser extends GrammarDefinition {
   Parser evalExpression() =>
       (ref0(identifierList) & ref0(innerExpression).star())
           .labeled('evalExpression')
-          .map((value) => NixEvalExpression(value[0], value[1]));
+          .map((value) {
+        final expr = NixEvalExpression(value[0], value[1]);
+
+        if (expr.isConstant(globalScope) && doEvalReduce) {
+          return expr.constEval(globalScope);
+        }
+
+        return expr;
+      });
 
   Parser letInExpression() =>
       (ref0(letToken) & ref0(field).star() & ref0(inToken) & ref0(expression))
@@ -261,8 +272,8 @@ class NixParser extends GrammarDefinition {
           inherits: fields.whereType<NixInheritExpression>().toList(),
         );
 
-        if (expr.isConstant({})) {
-          return expr.constEval({});
+        if (expr.isConstant(globalScope) && doEvalReduce) {
+          return expr.constEval(globalScope);
         }
         return expr;
       });
@@ -276,12 +287,6 @@ class NixParser extends GrammarDefinition {
               ref1(token, '=') &
               ref0(expression))
           .map((value) => MapEntry(value[0], value[2]));
-
-  Parser derivationExpression() => (ref0(derivationToken) &
-          ref1(token, '{') &
-          ref0(field).star() &
-          ref1(token, '}'))
-      .labeled('derivationExpression');
 
   Parser<NixInheritExpression> inheritExpression() => (ref0(inheritToken) &
           ref0(inheritFrom).optional() &
@@ -312,18 +317,19 @@ class NixParser extends GrammarDefinition {
           .labeled('mathExpression')
           .map((value) {
         final expr = NixMathExpression(value[0], value[1]);
-        if (expr.isConstant({})) return expr.constEval({});
+        if (expr.isConstant(globalScope) && doEvalReduce)
+          return expr.constEval(globalScope);
         return expr;
       });
 
   Parser mathExpressionSide() =>
       ref0(parenExpression) |
       ref0(ifElseExpression) |
-      ref0(importExpression) |
       ref0(hasAttrExpression) |
       ref0(orExpression) |
       ref0(literal) |
-      ref0(identifierList);
+      ref0(identifierList) |
+      ref0(evalExpression);
 
   Parser<NixMathOperator> mathOperator() => (ref1(token, '+') |
           ref1(token, '-') |
@@ -351,10 +357,6 @@ class NixParser extends GrammarDefinition {
             (_) => throw Exception('Unknown operator ${token.value}'),
           });
 
-  Parser<NixImportExpression> importExpression() =>
-      (ref0(importToken) & ref0(innerExpression).star())
-          .map((value) => NixImportExpression(value[1]));
-
   Parser<NixOrExpression> orExpression() =>
       (ref0(identifierList) & ref0(orToken) & ref0(expression))
           .labeled('orExpression')
@@ -364,8 +366,8 @@ class NixParser extends GrammarDefinition {
       (ref0(assetToken) & ref0(innerExpression) & ref1(token, ';'))
           .map((value) {
         final expr = NixAssertExpression(value[1]);
-        if (expr.isConstant({})) {
-          return expr.constEval({});
+        if (expr.isConstant(globalScope) && doEvalReduce) {
+          return expr.constEval(globalScope);
         }
         return expr;
       });
@@ -374,26 +376,50 @@ class NixParser extends GrammarDefinition {
       (ref0(withToken) & ref0(innerExpression) & ref1(token, ';'))
           .map((value) => NixWithExpression(value[1]));
 
-  Parser funcExpression() =>
-      (ref0(funcArguments) & ref0(expression)).labeled('funcExpression');
+  Parser funcExpression() => (ref0(funcArguments) & ref0(expression))
+          .labeled('funcExpression')
+          .map((value) {
+        final expr = NixFunctionExpression(value[0].cast<Object>(), value[1]);
+        if (expr.isConstant(globalScope) && doEvalReduce) {
+          return expr.constEval(globalScope);
+        }
+        return expr;
+      });
 
   Parser funcArguments() =>
       ref0(funcArgumentsElement).plus().labeled('funcArguments');
 
-  Parser funcArgumentsElement() => ((ref0(identifier) |
-              (ref1(token, '{') &
-                  (ref0(funcArgumentsElementField) &
-                          (ref1(token, ',') &
-                                  ref0(funcArgumentsElementField)
-                                      .plusSeparated(ref1(token, ',')))
-                              .optional())
-                      .optional() &
-                  ref1(token, '}'))) &
-          ref1(token, ':'))
-      .labeled('funcArgumentsElement');
+  Parser funcArgumentsElement() =>
+      ((ref0(identifier) | ref0(funcArgumentsElementAttrSet)) &
+              ref1(token, ':'))
+          .labeled('funcArgumentsElement')
+          .map((value) => value[0]);
 
-  Parser funcArgumentsElementField() =>
-      ref0(identifier) & (ref1(token, '?') & ref0(expression)).optional();
+  Parser funcArgumentsElementAttrSet() => ((ref1(token, '{') &
+              ref0(funcArgumentsElementAttrSetFieldList).optional() &
+              ref1(token, '}') &
+              (ref1(token, '@') & ref0(identifier)).optional())
+          .map((value) => NixFunctionArgumentExpression(
+              value[1], value[3] != null ? value[1] : null)) |
+      ((ref0(identifier) & ref1(token, '@')).optional() &
+              ref1(token, '{') &
+              ref0(funcArgumentsElementAttrSetFieldList).optional() &
+              ref1(token, '}'))
+          .map((value) => NixFunctionArgumentExpression(
+              value[2], value[0] != null ? value[0][1] : null)));
+
+  Parser<Map<Object, Object?>> funcArgumentsElementAttrSetFieldList() =>
+      (ref0(funcArgumentsElementField) &
+              (ref1(token, ',') &
+                      ref0(funcArgumentsElementField)
+                          .plusSeparated(ref1(token, ',')))
+                  .map((value) => value[1].elements)
+                  .optional())
+          .map((value) => Map.fromEntries([value[0], ...value[1]]));
+
+  Parser<MapEntry<Object, Object?>> funcArgumentsElementField() =>
+      (ref0(identifier) & (ref1(token, '?') & ref0(expression)).optional()).map(
+          (value) => MapEntry(value[0], value[1] != null ? value[1][1] : null));
 
   Parser mergeListExpression() => (ref0(mergeListExpressionSide) &
           (ref1(token, '++') & ref0(mergeListExpressionSide)).plus())
@@ -413,6 +439,8 @@ class NixParser extends GrammarDefinition {
   Parser listElement() => (ref0(listExpression) |
           ref0(attrSetExpression) |
           ref0(literal) |
+          ref0(orExpression) |
+          ref0(evalExpression) |
           ref0(identifierList) |
           ref0(parenExpression))
       .labeled('listElement');
