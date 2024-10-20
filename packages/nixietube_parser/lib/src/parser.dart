@@ -79,12 +79,13 @@ class NixParser extends GrammarDefinition {
           .labeled('stringLexicalToken')
           .map((value) => value);
 
-  // FIXME: handle ''${expr}
   Parser<List<List<dynamic>>> multiLineStringLexicalToken() =>
       (string("''").token() &
-              (ref0(identifierExpressionLexicalToken) | any())
+              ((string("''\${") & any()).map((value) => "\${${value[1]}") |
+                      ref0(identifierExpressionLexicalToken) |
+                      any())
                   .token()
-                  .starLazy(string("''")) &
+                  .starLazy(string("''\${").not() & string("''")) &
               string("''").token())
           .map((value) => value[1].fold(<List<dynamic>>[], (prev, token) {
                 var list = prev;
