@@ -401,7 +401,7 @@ class NixParser extends GrammarDefinition {
               ref1(token, '}') &
               (ref1(token, '@') & ref0(identifier)).optional())
           .map((value) => NixFunctionArgumentExpression(
-              value[1], value[3] != null ? value[1] : null)) |
+              value[1] ?? {}, value[3] != null ? value[1] : null)) |
       ((ref0(identifier) & ref1(token, '@')).optional() &
               ref1(token, '{') &
               ref0(funcArgumentsElementAttrSetFieldList).optional() &
