@@ -416,7 +416,7 @@ class NixParser extends GrammarDefinition {
                           .plusSeparated(ref1(token, ',')))
                   .map((value) => value[1].elements)
                   .optional())
-          .map((value) => Map.fromEntries([value[0], ...value[1]]));
+          .map((value) => Map.fromEntries([value[0], if (value[1] != null) ...value[1]]));
 
   Parser<MapEntry<Object, Object?>> funcArgumentsElementField() =>
       (ref0(identifier) & (ref1(token, '?') & ref0(expression)).optional()).map(
