@@ -1,3 +1,5 @@
+import 'package:asn1lib/asn1lib.dart';
+
 import 'inherit.dart';
 import '../type.dart';
 
@@ -13,11 +15,34 @@ class NixAttributeSetExpression extends NixType<Map<Object, Object?>> {
   final Map<Object, Object?> fields;
 
   @override
-  int get hashCode => Object.hashAll([
-        isRec,
-        inherits,
-        fields,
-      ]);
+  ASN1Sequence serialize(Map<Object, Object?> scope) {
+    final seq = super.serialize(scope);
+
+    seq.add(ASN1Boolean(isRec));
+    seq.add(ASN1Sequence()
+      ..elements =
+          inherits.map((inherit) => inherit.serialize(scope)).toList());
+    seq.add(ASN1Sequence()
+      ..elements = fields.entries.map((entry) {
+        final seqField = ASN1Sequence();
+
+        if (entry.key is NixType) {
+          seqField.add((entry.key as NixType).serialize(scope));
+        } else {
+          throw Exception('Cannot serialize ${entry.key.runtimeType}');
+        }
+
+        if (entry.value is NixType) {
+          seqField.add((entry.value as NixType).serialize(scope));
+        } else {
+          throw Exception('Cannot serialize ${entry.key.runtimeType}');
+        }
+
+        return seqField;
+      }).toList());
+
+    return seq;
+  }
 
   @override
   bool isConstant(Map<Object, Object?> scope) => isObjectConstantNix(

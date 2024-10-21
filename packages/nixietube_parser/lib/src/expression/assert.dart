@@ -1,3 +1,4 @@
+import 'package:asn1lib/asn1lib.dart';
 import '../type.dart';
 
 class NixAssertExpression extends NixType<NixAssertExpression> {
@@ -6,7 +7,18 @@ class NixAssertExpression extends NixType<NixAssertExpression> {
   final Object? value;
 
   @override
-  int get hashCode => Object.hashAll([value]);
+  ASN1Sequence serialize(Map<Object, Object?> scope) {
+    final seq = super.serialize(scope);
+
+    if (value is NixType) {
+      seq.add((value as NixType).serialize(scope));
+    } else {
+      if (isConstant(scope)) {
+        seq.add(ASN1Boolean(value as bool));
+      }
+    }
+    return seq;
+  }
 
   @override
   bool isConstant(Map<Object, Object?> scope) =>

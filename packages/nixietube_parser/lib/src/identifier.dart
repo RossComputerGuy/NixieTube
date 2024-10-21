@@ -1,9 +1,17 @@
+import 'package:asn1lib/asn1lib.dart';
 import 'type.dart';
 
 class NixIdentifier {
   const NixIdentifier(this.value);
 
   final List<Object?> value;
+
+  ASN1Sequence serialize(Map<Object, Object?> scope) {
+    final seq = ASN1Sequence();
+    seq.add(ASN1UTF8String(runtimeType.toString()));
+    // TODO seq.add(ASN1Sequence()..elements = value.map().toList());
+    return seq;
+  }
 
   @override
   bool operator ==(Object other) {
