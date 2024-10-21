@@ -192,7 +192,7 @@ class NixParser extends GrammarDefinition {
       .labeled('pathTokenElementCurr')
       .map((value) => value.substring(0, value.length - 1));
   Parser pathTokenElementName() =>
-      (ref0(identifierList) | ref0(singleLineStringLexicalToken))
+      (ref0(identifierListNormal) | ref0(singleLineStringLexicalToken))
           .labeled('pathTokenElementName');
 
   /* Expressions */
@@ -232,6 +232,8 @@ class NixParser extends GrammarDefinition {
       ref0(funcExpression) |
       ref0(listExpression) |
       ref0(attrSetExpression) |
+      ref0(evalExpression) |
+      ref0(orExpression) |
       ref0(logicalExpression));
 
   Parser<NixLogicalExpression> logicalExpression() => (ref1(token, '!')
@@ -240,10 +242,8 @@ class NixParser extends GrammarDefinition {
               ref0(mergeListExpression) |
               ref0(mergeAttrExpression) |
               ref0(hasAttrExpression) |
-              ref0(orExpression) |
               ref0(mathExpression) |
-              ref0(literal) |
-              ref0(evalExpression)))
+              ref0(literal)))
       .map((value) => NixLogicalExpression(value[1],
           isNegative: value[0] is Token ? value[0].value == '!' : false));
 
@@ -359,7 +359,7 @@ class NixParser extends GrammarDefinition {
           });
 
   Parser<NixOrExpression> orExpression() =>
-      (ref0(identifierList) & ref0(orToken) & ref0(expression))
+      (ref0(identifierList) & ref0(orToken) & (ref0(identifierList) | ref0(parenExpression)))
           .labeled('orExpression')
           .map((value) => NixOrExpression(value[0], value[2]));
 
@@ -490,9 +490,15 @@ class NixParser extends GrammarDefinition {
   Parser identifier() =>
       ref1(token, ref0(identifierLexicalToken)).map((value) => value.value);
 
-  Parser<NixIdentifierList> identifierList() => ref0(identifier)
-      .plusSeparated(ref1(token, '.'))
-      .map((value) => NixIdentifierList(value.elements));
+  Parser<NixIdentifierList> identifierList() => (ref0(identifierListAttrFirst) | ref0(identifierListNormal))
+    .map((value) => value);
+
+  Parser<NixIdentifierList> identifierListNormal() => ref0(identifier).plusSeparated(ref1(token, '.'))
+    .map((value) => NixIdentifierList(value.elements));
+
+  Parser<NixIdentifierList> identifierListAttrFirst() =>
+    (ref0(attrSetExpression) & (ref1(token, '.') & ref(identifierListNormal)))
+    .map((value) => NixIdentifierList([ ...value[0], if (value[1] != null) ...value[1][1].value ]));
 
   /* Whitespace & newlines */
 
