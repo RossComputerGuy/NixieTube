@@ -1,3 +1,5 @@
+import 'package:asn1lib/asn1lib.dart';
+
 import 'function.dart';
 import '../identifier.dart';
 import '../type.dart';
@@ -7,6 +9,14 @@ class NixEvalExpression extends NixType<Object?> {
 
   final NixIdentifierList identifiers;
   final List<Object?> inners;
+
+  @override
+  ASN1Sequence serialize(Map<Object, Object?> scope) {
+    final seq = super.serialize(scope);
+    seq.add(serializeNix(identifiers, scope));
+    seq.add(serializeNix(inners, scope));
+    return seq;
+  }
 
   @override
   bool isConstant(Map<Object, Object?> scope) {

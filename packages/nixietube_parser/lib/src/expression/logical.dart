@@ -1,3 +1,4 @@
+import 'package:asn1lib/asn1lib.dart';
 import '../type.dart';
 
 class NixLogicalExpression extends NixType<Object?> {
@@ -8,6 +9,14 @@ class NixLogicalExpression extends NixType<Object?> {
 
   final bool isNegative;
   final Object? value;
+
+  @override
+  ASN1Sequence serialize(Map<Object, Object?> scope) {
+    final seq = super.serialize(scope);
+    seq.add(ASN1Boolean(isNegative));
+    seq.add(serializeNix(value, scope));
+    return seq;
+  }
 
   @override
   bool isConstant(Map<Object, Object?> scope) =>

@@ -1,3 +1,4 @@
+import 'package:asn1lib/asn1lib.dart';
 import 'inherit.dart';
 import '../expression.dart';
 import '../type.dart';
@@ -12,6 +13,15 @@ class NixLetInExpression extends NixType<dynamic> {
   final List<NixInheritExpression> inherits;
   final Map<Object, Object?> fields;
   final Object? inner;
+
+  @override
+  ASN1Sequence serialize(Map<Object, Object?> scope) {
+    final seq = super.serialize(scope);
+    seq.add(serializeNix(inherits, scope));
+    seq.add(serializeNix(fields, scope));
+    seq.add(serializeNix(inner, scope));
+    return seq;
+  }
 
   @override
   bool isConstant(Map<Object, Object?> scope) => isObjectConstantNix(

@@ -19,27 +19,8 @@ class NixAttributeSetExpression extends NixType<Map<Object, Object?>> {
     final seq = super.serialize(scope);
 
     seq.add(ASN1Boolean(isRec));
-    seq.add(ASN1Sequence()
-      ..elements =
-          inherits.map((inherit) => inherit.serialize(scope)).toList());
-    seq.add(ASN1Sequence()
-      ..elements = fields.entries.map((entry) {
-        final seqField = ASN1Sequence();
-
-        if (entry.key is NixType) {
-          seqField.add((entry.key as NixType).serialize(scope));
-        } else {
-          throw Exception('Cannot serialize ${entry.key.runtimeType}');
-        }
-
-        if (entry.value is NixType) {
-          seqField.add((entry.value as NixType).serialize(scope));
-        } else {
-          throw Exception('Cannot serialize ${entry.key.runtimeType}');
-        }
-
-        return seqField;
-      }).toList());
+    seq.add(serializeNix(inherits, scope));
+    seq.add(serializeNix(fields, scope));
 
     return seq;
   }

@@ -1,4 +1,5 @@
 import 'package:nixietube_parser/nixietube_parser.dart';
+import 'package:petitparser/debug.dart';
 import 'package:petitparser/reflection.dart';
 import 'package:test/test.dart';
 
@@ -91,5 +92,24 @@ void main() {
     expect(parser.parse('assert true; null').value, null);
     expect(parser.parse('with { a = 1; }; a + 1').value, 2);
     expect(parser.parse('let a = 1; in a + 1').value, 2);
+  });
+
+  test('Identifier list', () {
+    final parse = NixParser();
+    final parser = parse.buildFrom(parse.identifierList());
+
+    // FIXME: this should match but expect says it doesn't
+    expect(
+        parser.parse('{ x = 5; }.x').value,
+        NixIdentifierList([
+          NixAttributeSetExpression(
+            fields: {
+              NixIdentifierList([
+                NixIdentifier(['x'])
+              ]): 5,
+            },
+          ),
+          NixIdentifier(['x']),
+        ]));
   });
 }

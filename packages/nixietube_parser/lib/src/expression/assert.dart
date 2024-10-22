@@ -9,14 +9,7 @@ class NixAssertExpression extends NixType<NixAssertExpression> {
   @override
   ASN1Sequence serialize(Map<Object, Object?> scope) {
     final seq = super.serialize(scope);
-
-    if (value is NixType) {
-      seq.add((value as NixType).serialize(scope));
-    } else {
-      if (isConstant(scope)) {
-        seq.add(ASN1Boolean(value as bool));
-      }
-    }
+    seq.add(serializeNix(value, scope));
     return seq;
   }
 

@@ -1,3 +1,4 @@
+import 'package:asn1lib/asn1lib.dart';
 import '../identifier.dart';
 import '../type.dart';
 
@@ -6,6 +7,14 @@ class NixFunctionArgumentExpression extends NixType<Map<Object, Object?>> {
 
   final Map<Object, Object?> fields;
   final NixIdentifier? tag;
+
+  @override
+  ASN1Sequence serialize(Map<Object, Object?> scope) {
+    final seq = super.serialize(scope);
+    seq.add(serializeNix(fields, scope));
+    seq.add(serializeNix(tag, scope));
+    return seq;
+  }
 
   @override
   bool isConstant(Map<Object, Object?> scope) => isObjectConstantNix(
@@ -36,6 +45,14 @@ class NixFunctionExpression extends NixType<dynamic> {
 
   final List<Object> arguments;
   final Object? body;
+
+  @override
+  ASN1Sequence serialize(Map<Object, Object?> scope) {
+    final seq = super.serialize(scope);
+    seq.add(serializeNix(arguments, scope));
+    seq.add(serializeNix(body, scope));
+    return seq;
+  }
 
   @override
   bool isConstant(Map<Object, Object?> scope) =>

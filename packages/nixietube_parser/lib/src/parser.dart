@@ -236,16 +236,23 @@ class NixParser extends GrammarDefinition {
       ref0(logicalExpression) |
       ref0(evalExpression));
 
-  Parser<NixLogicalExpression> logicalExpression() => (ref1(token, '!')
-              .optional() &
-          (ref0(parenExpression) |
-              ref0(mergeListExpression) |
-              ref0(mergeAttrExpression) |
-              ref0(hasAttrExpression) |
-              ref0(mathExpression) |
-              ref0(literal)))
-      .map((value) => NixLogicalExpression(value[1],
-          isNegative: value[0] is Token ? value[0].value == '!' : false));
+  Parser logicalExpression() => (ref1(token, '!').optional() &
+              (ref0(parenExpression) |
+                  ref0(mergeListExpression) |
+                  ref0(mergeAttrExpression) |
+                  ref0(hasAttrExpression) |
+                  ref0(mathExpression) |
+                  ref0(literal)))
+          .map((value) {
+        final expr = NixLogicalExpression(value[1],
+            isNegative: value[0] is Token ? value[0].value == '!' : false);
+
+        if (expr.isConstant(globalScope) && doEvalReduce) {
+          return expr.constEval(globalScope);
+        }
+
+        return expr;
+      });
 
   Parser evalExpression() =>
       (ref0(identifierList) & ref0(innerExpression).star())
@@ -503,7 +510,7 @@ class NixParser extends GrammarDefinition {
   Parser<NixIdentifierList> identifierListAttrFirst() =>
       (ref0(attrSetExpression) & (ref1(token, '.') & ref(identifierListNormal)))
           .map((value) => NixIdentifierList(
-              [...value[0], if (value[1] != null) ...value[1][1].value]));
+              [value[0], if (value[1] != null) ...value[1][1].value]));
 
   /* Whitespace & newlines */
 

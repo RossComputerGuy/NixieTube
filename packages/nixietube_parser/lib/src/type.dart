@@ -92,3 +92,52 @@ Map<Object, Object?> constEvalScope({
     }),
   ]);
 }
+
+ASN1Object serializeNix(Object? value, Map<Object, Object?> scope) {
+  if (value is NixType) {
+    return (value as NixType).serialize(scope);
+  }
+
+  if (value is String) {
+    return ASN1UTF8String(value as String);
+  }
+
+  if (value is bool) {
+    return ASN1Boolean(value as bool);
+  }
+
+  if (value is int) {
+    return ASN1Integer.fromInt(value as int);
+  }
+
+  if (value is Null) {
+    return ASN1Null();
+  }
+
+  if (value is List) {
+    final list = ASN1Sequence();
+
+    for (final item in (value as List)) {
+      list.add(serializeNix(item, scope));
+    }
+
+    return list;
+  }
+
+  if (value is Map) {
+    final map = ASN1Sequence();
+
+    for (final entry in (value as Map).entries) {
+      final field = ASN1Sequence();
+
+      field.add(serializeNix(entry.key, scope));
+      field.add(serializeNix(entry.value, scope));
+
+      map.add(field);
+    }
+
+    return map;
+  }
+
+  throw Exception('Cannot serialize type ${value.runtimeType}');
+}

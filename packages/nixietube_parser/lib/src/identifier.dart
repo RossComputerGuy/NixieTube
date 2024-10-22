@@ -1,17 +1,26 @@
 import 'package:asn1lib/asn1lib.dart';
 import 'type.dart';
 
-class NixIdentifier {
+class NixIdentifier extends NixType<List<Object?>> {
   const NixIdentifier(this.value);
 
   final List<Object?> value;
 
+  @override
   ASN1Sequence serialize(Map<Object, Object?> scope) {
-    final seq = ASN1Sequence();
-    seq.add(ASN1UTF8String(runtimeType.toString()));
-    // TODO seq.add(ASN1Sequence()..elements = value.map().toList());
+    final seq = super.serialize(scope);
+    seq.add(serializeNix(value, scope));
     return seq;
   }
+
+  @override
+  bool isConstant(Map<Object, Object?> scope) =>
+      isObjectConstantNix(value, scope);
+
+  @override
+  List<Object?> constEval(Map<Object, Object?> scope) => value
+      .map((v) => v is NixType ? (v as NixType).constEval(scope) : v)
+      .toList();
 
   @override
   bool operator ==(Object other) {
@@ -39,7 +48,11 @@ class NixIdentifierList extends NixType<Object?> {
   final List<Object?> value;
 
   @override
-  int get hashCode => Object.hashAll(value);
+  ASN1Sequence serialize(Map<Object, Object?> scope) {
+    final seq = super.serialize(scope);
+    seq.add(serializeNix(value, scope));
+    return seq;
+  }
 
   @override
   bool isConstant(Map<Object, Object?> scope) {

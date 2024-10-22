@@ -1,3 +1,4 @@
+import 'package:asn1lib/asn1lib.dart';
 import '../type.dart';
 
 enum NixMathOperator {
@@ -23,6 +24,14 @@ class NixMathExpressionSide extends NixType<Object?> {
 
   final NixMathOperator operation;
   final Object? value;
+
+  @override
+  ASN1Sequence serialize(Map<Object, Object?> scope) {
+    final seq = super.serialize(scope);
+    seq.add(ASN1UTF8String(operation.token));
+    seq.add(serializeNix(value, scope));
+    return seq;
+  }
 
   @override
   bool isConstant(Map<Object, Object?> scope) =>
@@ -52,6 +61,14 @@ class NixMathExpression extends NixType<Object?> {
   final List<NixMathExpressionSide> right;
 
   @override
+  ASN1Sequence serialize(Map<Object, Object?> scope) {
+    final seq = super.serialize(scope);
+    seq.add(serializeNix(left, scope));
+    seq.add(serializeNix(right, scope));
+    return seq;
+  }
+
+  @override
   bool isConstant(Map<Object, Object?> scope) =>
       isObjectConstantNix(left, scope) && isObjectConstantNix(right, scope);
 
@@ -71,13 +88,18 @@ class NixMathExpression extends NixType<Object?> {
         NixMathOperator.sub => i - item.constEval(scope),
         NixMathOperator.mul => i * item.constEval(scope),
         NixMathOperator.div => i / item.constEval(scope),
-        NixMathOperator.equal => (i as bool) == (item.constEval(scope) as bool),
-        (_) =>
-          throw Exception('Cannot handle operation: ${item.operation.name}'),
+        NixMathOperator.equal => i == item.constEval(scope),
+        NixMathOperator.notEqual => i != item.constEval(scope),
+        NixMathOperator.gt => i > item.constEval(scope),
+        NixMathOperator.lt => i < item.constEval(scope),
+        NixMathOperator.gtEqual => i >= item.constEval(scope),
+        NixMathOperator.ltEqual => i <= item.constEval(scope),
+        NixMathOperator.impl =>
+          (i as bool) ? item.constEval(scope) as bool : false,
       };
     }
 
-    if (keepInt) return i.toInt();
+    if (keepInt && i is num) return i.toInt();
     return i;
   }
 

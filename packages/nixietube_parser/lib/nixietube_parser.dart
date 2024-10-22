@@ -1,7 +1,7 @@
 library;
 
 export 'src/expression/assert.dart';
-import 'src/expression/attrset.dart';
+export 'src/expression/attrset.dart';
 export 'src/expression/eval.dart';
 export 'src/expression/function.dart';
 export 'src/expression/inherit.dart';
