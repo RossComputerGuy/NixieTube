@@ -3,12 +3,12 @@ import 'package:test/test.dart';
 
 void main() {
   test('Asserts', () {
-    expect(NixAssertExpression(false).hashCode, -7474038219152082308);
-    expect(NixAssertExpression(true).hashCode, 826976763423733234);
+    expect(NixAssertExpression(false).hashCode, 245403957095838170);
+    expect(NixAssertExpression(true).hashCode, -1948374485845354201);
     expect(
         NixAssertExpression(NixIdentifierList([
           NixIdentifier(['value'])
         ])).hashCode,
-        -4204942221593731550);
+        -5432654907264442069);
   });
 }

@@ -1,5 +1,3 @@
-import 'dart:convert' show utf8;
-
 import 'package:asn1lib/asn1lib.dart';
 import 'package:meta/meta.dart';
 import 'package:xxh3/xxh3.dart';
@@ -10,7 +8,7 @@ abstract class NixType<T> {
   const NixType();
 
   @override
-  int get hashCode => xxh3(utf8.encode(serialize({}).toString()));
+  int get hashCode => xxh3(serialize({}).encodedBytes);
 
   @mustCallSuper
   ASN1Sequence serialize(Map<Object, Object?> scope) {
