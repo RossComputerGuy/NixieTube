@@ -39,13 +39,5 @@ class NixLogicalExpression extends NixType<Object?> {
   }
 
   @override
-  bool operator ==(Object other) {
-    if (other is NixLogicalExpression) {
-      return other.value == value && other.isNegative == isNegative;
-    }
-    return false;
-  }
-
-  @override
   String toString() => (isNegative ? '! ' : '') + '$value';
 }

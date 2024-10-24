@@ -49,22 +49,6 @@ class NixEvalExpression extends NixType<Object?> {
   }
 
   @override
-  bool operator ==(Object other) {
-    if (other is NixEvalExpression) {
-      if (other.inners.length == inners.length) {
-        var i = 0;
-        while (i < inners.length) {
-          if (other.inners[i] != inners[i]) return false;
-          i++;
-        }
-
-        return identifiers == other.identifiers;
-      }
-    }
-    return false;
-  }
-
-  @override
   String toString() =>
       '$identifiers${inners.isNotEmpty ? ' ' + inners.join(' ') : ''}';
 }

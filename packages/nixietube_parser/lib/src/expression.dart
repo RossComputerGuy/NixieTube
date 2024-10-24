@@ -60,32 +60,6 @@ class NixExpression extends NixType<dynamic> {
   }
 
   @override
-  bool operator ==(Object other) {
-    if (other is NixExpression) {
-      if (other.withs.length == withs.length) {
-        var i = 0;
-        while (i < withs.length) {
-          if (other.withs[i] != withs[i]) return false;
-          i++;
-        }
-      } else
-        return false;
-
-      if (other.asserts.length == asserts.length) {
-        var i = 0;
-        while (i < asserts.length) {
-          if (other.asserts[i] != asserts[i]) return false;
-          i++;
-        }
-      } else
-        return false;
-
-      return other.inner == inner;
-    }
-    return false;
-  }
-
-  @override
   String toString() {
     final w = withs.map((value) => 'with $value; ').join(' ');
     final a = asserts.map((value) => 'assert $value; ').join(' ');

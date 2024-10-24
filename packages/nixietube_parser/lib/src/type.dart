@@ -10,6 +10,14 @@ abstract class NixType<T> {
   @override
   int get hashCode => xxh3(serialize({}).encodedBytes);
 
+  @override
+  bool operator ==(Object other) {
+    if (other is NixType) {
+      return other.hashCode == hashCode;
+    }
+    return false;
+  }
+
   @mustCallSuper
   ASN1Sequence serialize(Map<Object, Object?> scope) {
     final seq = ASN1Sequence();

@@ -98,7 +98,6 @@ void main() {
     final parse = NixParser();
     final parser = parse.buildFrom(parse.identifierList());
 
-    // FIXME: this should match but expect says it doesn't
     expect(
         parser.parse('{ x = 5; }.x').value,
         NixIdentifierList([

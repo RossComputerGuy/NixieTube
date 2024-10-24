@@ -39,13 +39,5 @@ class NixAssertExpression extends NixType<NixAssertExpression> {
   }
 
   @override
-  bool operator ==(Object other) {
-    if (other is NixAssertExpression) {
-      return other.value == other.value;
-    }
-    return false;
-  }
-
-  @override
   String toString() => 'assert $value';
 }
